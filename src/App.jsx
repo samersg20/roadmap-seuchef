@@ -537,33 +537,58 @@ function NewCardForm({ onAdd, onCancel }) {
   );
 }
 
-function loadSavedStatuses() {
+// ── Encode/decode state to/from URL hash ──
+function encodeState(statusMap, customCards) {
+  const data = { s: statusMap, c: customCards };
+  return btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+}
+
+function decodeState(hash) {
   try {
-    const saved = localStorage.getItem("seuchef-statuses");
-    if (!saved) return initialPhases;
-    const map = JSON.parse(saved);
-    return initialPhases.map(phase => ({
+    const json = decodeURIComponent(escape(atob(hash)));
+    return JSON.parse(json);
+  } catch { return null; }
+}
+
+function loadInitialState() {
+  // 1. Try URL hash first (shared link)
+  const hash = window.location.hash.slice(1);
+  if (hash) {
+    const decoded = decodeState(hash);
+    if (decoded) {
+      const phases = initialPhases.map(phase => ({
+        ...phase,
+        features: phase.features.map(f => ({ ...f, status: decoded.s[f.id] || null })),
+      }));
+      return { phases, custom: decoded.c || [] };
+    }
+  }
+  // 2. Fallback to localStorage
+  try {
+    const savedStatuses = localStorage.getItem("seuchef-statuses");
+    const savedCustom = localStorage.getItem("seuchef-custom");
+    const map = savedStatuses ? JSON.parse(savedStatuses) : {};
+    const phases = initialPhases.map(phase => ({
       ...phase,
       features: phase.features.map(f => ({ ...f, status: map[f.id] || null })),
     }));
-  } catch { return initialPhases; }
-}
-
-function loadSavedCustomCards() {
-  try {
-    const saved = localStorage.getItem("seuchef-custom");
-    return saved ? JSON.parse(saved) : [];
-  } catch { return []; }
+    return { phases, custom: savedCustom ? JSON.parse(savedCustom) : [] };
+  } catch {
+    return { phases: initialPhases, custom: [] };
+  }
 }
 
 export default function Roadmap() {
-  const [phases, setPhases] = useState(loadSavedStatuses);
+  const [initial] = useState(loadInitialState);
+  const [phases, setPhases] = useState(initial.phases);
   const [activeFeature, setActiveFeature] = useState(null);
-  const [customCards, setCustomCards] = useState(loadSavedCustomCards);
+  const [customCards, setCustomCards] = useState(initial.custom);
   const [showForm, setShowForm] = useState(false);
   const [customActiveFeature, setCustomActiveFeature] = useState(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
-  // Persist statuses to localStorage
+  // Persist to localStorage
   useEffect(() => {
     const map = {};
     phases.forEach(p => p.features.forEach(f => { if (f.status) map[f.id] = f.status; }));
@@ -581,8 +606,42 @@ export default function Roadmap() {
     })));
   };
 
+  const archiveFeature = (featureId) => {
+    setPhases(prev => prev.map(phase => ({
+      ...phase,
+      features: phase.features.map(f => f.id === featureId ? { ...f, status: "archived" } : f),
+    })));
+  };
+
+  const unarchiveFeature = (featureId) => {
+    setPhases(prev => prev.map(phase => ({
+      ...phase,
+      features: phase.features.map(f => f.id === featureId ? { ...f, status: null } : f),
+    })));
+  };
+
   const updateCustomStatus = (id, status) => {
     setCustomCards(prev => prev.map(c => c.id === id ? { ...c, status } : c));
+  };
+
+  const archiveCustomCard = (id) => {
+    setCustomCards(prev => prev.map(c => c.id === id ? { ...c, status: "archived" } : c));
+  };
+
+  const unarchiveCustomCard = (id) => {
+    setCustomCards(prev => prev.map(c => c.id === id ? { ...c, status: null } : c));
+  };
+
+  const generateShareLink = () => {
+    const map = {};
+    phases.forEach(p => p.features.forEach(f => { if (f.status) map[f.id] = f.status; }));
+    const hash = encodeState(map, customCards);
+    const url = window.location.origin + window.location.pathname + "#" + hash;
+    navigator.clipboard.writeText(url).then(() => {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 3000);
+    });
+    window.location.hash = hash;
   };
 
   const addCard = (form) => {
@@ -610,10 +669,15 @@ export default function Roadmap() {
   };
 
   const allFeatures = phases.flatMap(p => p.features);
-  const approved = [...allFeatures, ...customCards].filter(f => f.status === "approved").length;
-  const rejected = [...allFeatures, ...customCards].filter(f => f.status === "rejected").length;
-  const pending = [...allFeatures, ...customCards].length - approved - rejected;
-  const decidedFeatures = allFeatures.filter(f => f.status !== null);
+  const visibleFeatures = allFeatures.filter(f => f.status !== "archived");
+  const visibleCustom = customCards.filter(c => c.status !== "archived");
+  const archivedFeatures = allFeatures.filter(f => f.status === "archived");
+  const archivedCustom = customCards.filter(c => c.status === "archived");
+  const totalArchived = archivedFeatures.length + archivedCustom.length;
+  const approved = [...visibleFeatures, ...visibleCustom].filter(f => f.status === "approved").length;
+  const rejected = [...visibleFeatures, ...visibleCustom].filter(f => f.status === "rejected").length;
+  const pending = [...visibleFeatures, ...visibleCustom].filter(f => !f.status).length;
+  const decidedFeatures = visibleFeatures.filter(f => f.status === "approved" || f.status === "rejected");
 
   return (
     <div style={{ fontFamily: "'Georgia', serif", background: "#0A0A0F", minHeight: "100vh", color: "#F0EDE6" }}>
@@ -640,13 +704,32 @@ export default function Roadmap() {
           {/* Score bar */}
           <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
             <div style={{ padding: "9px 18px", borderRadius: "100px", background: "rgba(255,255,255,0.04)", border: "1px solid #252530", fontFamily: "monospace", fontSize: "12px", color: "#666" }}>
-              📋 {pending} pendentes
+              {pending} pendentes
             </div>
             <div style={{ padding: "9px 18px", borderRadius: "100px", background: "rgba(0,135,90,0.1)", border: "1px solid rgba(78,203,160,0.3)", fontFamily: "monospace", fontSize: "12px", color: "#4ECBA0" }}>
-              ✓ {approved} aprovadas
+              {approved} aprovadas
             </div>
             <div style={{ padding: "9px 18px", borderRadius: "100px", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(248,113,113,0.25)", fontFamily: "monospace", fontSize: "12px", color: "#F87171" }}>
-              ✕ {rejected} recusadas
+              {rejected} recusadas
+            </div>
+            {totalArchived > 0 && (
+              <button onClick={() => setShowArchived(v => !v)} style={{ padding: "9px 18px", borderRadius: "100px", background: "rgba(255,255,255,0.03)", border: "1px solid #252530", fontFamily: "monospace", fontSize: "12px", color: "#555", cursor: "pointer" }}>
+                {showArchived ? "Ocultar" : "Ver"} {totalArchived} arquivada{totalArchived > 1 ? "s" : ""}
+              </button>
+            )}
+          </div>
+          {/* Save & Share */}
+          <div style={{ marginTop: "20px" }}>
+            <button onClick={generateShareLink} style={{
+              padding: "12px 28px", borderRadius: "100px", border: "1px solid #FF4D0050",
+              background: linkCopied ? "rgba(0,135,90,0.2)" : "rgba(255,77,0,0.12)",
+              color: linkCopied ? "#4ECBA0" : "#FF8C5A", fontSize: "13px", fontWeight: "700",
+              cursor: "pointer", fontFamily: "system-ui", transition: "all 0.2s",
+            }}>
+              {linkCopied ? "Link copiado!" : "Salvar & Copiar Link"}
+            </button>
+            <div style={{ fontSize: "10px", color: "#3A3A48", fontFamily: "monospace", marginTop: "8px" }}>
+              O link salva todas as decisões — abra em qualquer dispositivo
             </div>
           </div>
         </div>
@@ -697,7 +780,7 @@ export default function Roadmap() {
               {/* Cards */}
               <div style={{ paddingLeft: "12px", borderLeft: `2px solid ${phase.color}25` }}>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(310px, 1fr))", gap: "14px" }}>
-                  {phase.features.map((feat) => {
+                  {phase.features.filter(f => f.status !== "archived").map((feat) => {
                     const isOpen = activeFeature === feat.id;
                     const pc = personaColors[feat.persona];
                     const tc = tagColors[feat.tag] || "#666";
@@ -738,6 +821,14 @@ export default function Roadmap() {
                           onApprove={() => updateStatus(feat.id, "approved")}
                           onReject={() => updateStatus(feat.id, "rejected")}
                         />
+                        <button onClick={() => archiveFeature(feat.id)} style={{
+                          marginTop: "8px", width: "100%", background: "transparent", border: "1px solid #1C1C26",
+                          borderRadius: "6px", color: "#3A3A48", fontSize: "11px", cursor: "pointer",
+                          fontFamily: "monospace", padding: "6px", textAlign: "center", transition: "all 0.15s",
+                        }}
+                          onMouseOver={e => { e.currentTarget.style.borderColor = "#555"; e.currentTarget.style.color = "#777"; }}
+                          onMouseOut={e => { e.currentTarget.style.borderColor = "#1C1C26"; e.currentTarget.style.color = "#3A3A48"; }}
+                        >Arquivar</button>
                       </div>
                     );
                   })}
@@ -791,9 +882,9 @@ export default function Roadmap() {
 
           <div style={{ paddingLeft: "12px", borderLeft: "2px solid #6C2BD925" }}>
             {/* Existing custom cards */}
-            {customCards.length > 0 && (
+            {visibleCustom.length > 0 && (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(310px, 1fr))", gap: "14px", marginBottom: "20px" }}>
-                {customCards.map((feat) => {
+                {visibleCustom.map((feat) => {
                   const isOpen = customActiveFeature === feat.id;
                   const pc = personaColors[feat.persona] || personaColors["Ambos"];
                   const tc = tagColors[feat.tag] || "#6C2BD9";
@@ -825,10 +916,18 @@ export default function Roadmap() {
 
                       <ApprovalButtons status={feat.status} onApprove={() => updateCustomStatus(feat.id, "approved")} onReject={() => updateCustomStatus(feat.id, "rejected")} />
 
-                      {/* Remove */}
-                      <button onClick={() => removeCustomCard(feat.id)} style={{ marginTop: "8px", width: "100%", background: "transparent", border: "none", color: "#2A2A3A", fontSize: "11px", cursor: "pointer", fontFamily: "monospace", padding: "4px", textAlign: "center" }}>
-                        × remover card
-                      </button>
+                      <div style={{ display: "flex", gap: "6px", marginTop: "8px" }}>
+                        <button onClick={() => archiveCustomCard(feat.id)} style={{
+                          flex: 1, background: "transparent", border: "1px solid #1C1C26",
+                          borderRadius: "6px", color: "#3A3A48", fontSize: "11px", cursor: "pointer",
+                          fontFamily: "monospace", padding: "6px", textAlign: "center",
+                        }}>Arquivar</button>
+                        <button onClick={() => removeCustomCard(feat.id)} style={{
+                          flex: 1, background: "transparent", border: "1px solid #1C1C26",
+                          borderRadius: "6px", color: "#2A2A3A", fontSize: "11px", cursor: "pointer",
+                          fontFamily: "monospace", padding: "6px", textAlign: "center",
+                        }}>Remover</button>
+                      </div>
                     </div>
                   );
                 })}
@@ -858,6 +957,37 @@ export default function Roadmap() {
           </div>
         </div>
 
+
+        {/* ── ARCHIVED SECTION ── */}
+        {showArchived && totalArchived > 0 && (
+          <div style={{ marginBottom: "72px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "18px", marginBottom: "20px" }}>
+              <div style={{ width: "56px", height: "56px", borderRadius: "14px", flexShrink: 0, background: "linear-gradient(135deg, #333, #555)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" }}>📦</div>
+              <div style={{ flex: 1 }}>
+                <span style={{ fontSize: "10px", color: "#555", fontFamily: "monospace", letterSpacing: "3px", textTransform: "uppercase" }}>ARQUIVADAS</span>
+                <h2 style={{ fontSize: "24px", fontWeight: "900", margin: 0, letterSpacing: "-0.5px", color: "#555" }}>{totalArchived} card{totalArchived > 1 ? "s" : ""} arquivado{totalArchived > 1 ? "s" : ""}</h2>
+              </div>
+            </div>
+            <div style={{ paddingLeft: "12px", borderLeft: "2px solid #25253525" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(310px, 1fr))", gap: "14px" }}>
+                {[...archivedFeatures, ...archivedCustom].map(feat => (
+                  <div key={feat.id} style={{ background: "#0C0C12", border: "1px solid #1A1A22", borderRadius: "14px", padding: "20px", opacity: 0.6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+                      <span style={{ fontSize: "22px" }}>{feat.emoji}</span>
+                      <h3 style={{ fontSize: "13px", fontWeight: "700", color: "#777", margin: 0 }}>{feat.title}</h3>
+                    </div>
+                    <div style={{ fontSize: "11px", color: "#444", fontFamily: "monospace", marginBottom: "10px" }}>✦ {feat.wow}</div>
+                    <button onClick={() => feat.id.toString().startsWith("custom") ? unarchiveCustomCard(feat.id) : unarchiveFeature(feat.id)} style={{
+                      width: "100%", background: "rgba(108,43,217,0.08)", border: "1px solid rgba(108,43,217,0.25)",
+                      borderRadius: "6px", color: "#A67EF5", fontSize: "11px", cursor: "pointer",
+                      fontFamily: "monospace", padding: "8px", textAlign: "center",
+                    }}>Desarquivar</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div style={{ background: "linear-gradient(135deg, #14060A, #060A18)", border: "1px solid #1C1522", borderRadius: "22px", padding: "48px", textAlign: "center", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle at 50% 50%, rgba(255,77,0,0.04) 0%, transparent 65%)" }} />
