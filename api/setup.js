@@ -19,5 +19,13 @@ export default async function handler(req, res) {
     )
   `;
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS feature_edits (
+      feature_id TEXT PRIMARY KEY,
+      data JSONB NOT NULL,
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
+
   res.json({ ok: true, message: "Tables created" });
 }

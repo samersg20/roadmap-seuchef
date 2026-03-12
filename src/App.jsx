@@ -3,9 +3,9 @@ import { useState, useEffect } from "react";
 const initialPhases = [
   {
     id: 1,
-    name: "FASE 1",
-    subtitle: "MVP — Entre Rápido",
-    timeline: "Mês 1–3",
+    name: "CATEGORIA 1",
+    subtitle: "Onboarding sem Dor",
+    timeline: "",
     color: "#FF4D00",
     accent: "#FF8C5A",
     icon: "🚀",
@@ -91,9 +91,9 @@ const initialPhases = [
   },
   {
     id: 2,
-    name: "FASE 2",
-    subtitle: "Filtro Inteligente",
-    timeline: "Mês 4–7",
+    name: "CATEGORIA 2",
+    subtitle: "Seleção Turbinada",
+    timeline: "",
     color: "#6C2BD9",
     accent: "#A67EF5",
     icon: "⚡",
@@ -168,9 +168,9 @@ const initialPhases = [
   },
   {
     id: 3,
-    name: "FASE 3",
+    name: "CATEGORIA 3",
     subtitle: "Contratação Rápida",
-    timeline: "Mês 8–11",
+    timeline: "",
     color: "#00875A",
     accent: "#4ECBA0",
     icon: "✅",
@@ -245,9 +245,9 @@ const initialPhases = [
   },
   {
     id: 4,
-    name: "FASE 4",
-    subtitle: "Moat & Efeito Rede",
-    timeline: "Mês 12–18",
+    name: "CATEGORIA 4",
+    subtitle: "Engajamento e Retenção",
+    timeline: "",
     color: "#C17900",
     accent: "#F0B429",
     icon: "🏆",
@@ -353,6 +353,16 @@ const initialPhases = [
       },
     ],
   },
+  {
+    id: 5,
+    name: "CATEGORIA 5",
+    subtitle: "Outros",
+    timeline: "",
+    color: "#6B7280",
+    accent: "#9CA3AF",
+    icon: "📌",
+    features: [],
+  },
 ];
 
 const personaColors = {
@@ -369,7 +379,7 @@ const tagColors = {
   "Insights IA": "#6D28D9", Social: "#0D9488", Educação: "#0369A1", IA: "#4F46E5",
 };
 
-function ApprovalButtons({ status, onApprove, onReject }) {
+function ApprovalButtons({ status, onApprove, onReject, onUndo }) {
   if (status === "approved") {
     return (
       <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "14px" }}>
@@ -378,7 +388,7 @@ function ApprovalButtons({ status, onApprove, onReject }) {
           background: "rgba(0,135,90,0.2)", border: "1px solid rgba(78,203,160,0.5)",
           borderRadius: "8px", padding: "9px", color: "#4ECBA0", fontSize: "13px", fontWeight: "700", fontFamily: "system-ui",
         }}>✓ Aprovada</div>
-        <button onClick={onReject} style={{
+        <button onClick={onUndo} style={{
           background: "transparent", border: "1px solid #2A2A35", borderRadius: "8px",
           padding: "9px 14px", color: "#555", fontSize: "12px", cursor: "pointer", fontFamily: "monospace",
         }}>Desfazer</button>
@@ -393,7 +403,7 @@ function ApprovalButtons({ status, onApprove, onReject }) {
           background: "rgba(220,38,38,0.15)", border: "1px solid rgba(248,113,113,0.4)",
           borderRadius: "8px", padding: "9px", color: "#F87171", fontSize: "13px", fontWeight: "700", fontFamily: "system-ui",
         }}>✕ Recusada</div>
-        <button onClick={onApprove} style={{
+        <button onClick={onUndo} style={{
           background: "transparent", border: "1px solid #2A2A35", borderRadius: "8px",
           padding: "9px 14px", color: "#555", fontSize: "12px", cursor: "pointer", fontFamily: "monospace",
         }}>Desfazer</button>
@@ -419,8 +429,8 @@ function ApprovalButtons({ status, onApprove, onReject }) {
 const EMOJIS = ["💡","🔧","🎯","🚀","⚡","🔥","🌟","🎮","📊","🤝","💬","🗺️","🎬","📱","🛡️","🏅","💰","🎭","📚","🪙","🏆","🤖","💵","📋","⭐","🎙️","🧠","🔔","📲","🌐"];
 const TAGS_OPTS = ["IA","UX","Gamification","Conversão","Confiança","Reputação","Social","Urgência","Automação","Operacional","Educação","Simplicidade","Acessibilidade"];
 const PERSONAS = ["Candidato","Restaurante","Ambos"];
-const PHASES_OPTS = ["Fase 1 — MVP","Fase 2 — Filtro","Fase 3 — Contratação","Fase 4 — Moat"];
-const EMPTY_FORM = { title: "", emoji: "💡", persona: "Ambos", tag: "UX", phase: "Fase 1 — MVP", wow: "", description: "" };
+const PHASES_OPTS = ["Categoria 1 — Onboarding sem Dor","Categoria 2 — Seleção Turbinada","Categoria 3 — Contratação Rápida","Categoria 4 — Engajamento e Retenção","Categoria 5 — Outros"];
+const EMPTY_FORM = { title: "", emoji: "💡", persona: "Ambos", tag: "UX", phase: "Categoria 1 — Onboarding sem Dor", wow: "", description: "" };
 
 function NewCardForm({ onAdd, onCancel }) {
   const [form, setForm] = useState(EMPTY_FORM);
@@ -478,7 +488,7 @@ function NewCardForm({ onAdd, onCancel }) {
               </select>
             </div>
             <div>
-              <label style={labelStyle}>Categoria</label>
+              <label style={labelStyle}>Tag</label>
               <select value={form.tag} onChange={e => set("tag", e.target.value)} style={selectStyle}>
                 {TAGS_OPTS.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
@@ -486,12 +496,12 @@ function NewCardForm({ onAdd, onCancel }) {
           </div>
 
           <div>
-            <label style={labelStyle}>Fase do Roadmap</label>
+            <label style={labelStyle}>Categoria</label>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "8px" }}>
               {PHASES_OPTS.map((p, i) => {
-                const colors = ["#FF4D00","#6C2BD9","#00875A","#C17900"];
-                const accents = ["#FF8C5A","#A67EF5","#4ECBA0","#F0B429"];
-                const icons = ["🚀","⚡","✅","🏆"];
+                const colors = ["#FF4D00","#6C2BD9","#00875A","#C17900","#6B7280"];
+                const accents = ["#FF8C5A","#A67EF5","#4ECBA0","#F0B429","#9CA3AF"];
+                const icons = ["🚀","⚡","✅","🏆","📌"];
                 return (
                   <button key={p} onClick={() => set("phase", p)} style={{ padding: "9px 12px", borderRadius: "8px", cursor: "pointer", textAlign: "left", background: form.phase === p ? `${colors[i]}18` : "#0A0A12", border: `1px solid ${form.phase === p ? colors[i] + "50" : "#252535"}`, color: form.phase === p ? accents[i] : "#555", fontSize: "12px", fontFamily: "monospace" }}>{icons[i]} {p}</button>
                 );
@@ -537,6 +547,74 @@ function NewCardForm({ onAdd, onCancel }) {
   );
 }
 
+function EditCardModal({ card, onSave, onCancel }) {
+  const [form, setForm] = useState({
+    title: card.title,
+    emoji: card.emoji,
+    wow: card.wow,
+    description: card.description,
+    persona: card.persona,
+    tag: card.tag,
+  });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const canSave = form.title.trim().length > 2 && form.wow.trim().length > 2 && form.description.trim().length > 5;
+
+  const labelStyle = { fontSize: "11px", color: "#5A5A7A", fontFamily: "monospace", letterSpacing: "1px", textTransform: "uppercase", marginBottom: "6px", display: "block" };
+  const inputStyle = { width: "100%", background: "#0A0A12", border: "1px solid #252535", borderRadius: "8px", padding: "10px 14px", color: "#E0DDD8", fontSize: "14px", fontFamily: "system-ui", outline: "none", boxSizing: "border-box" };
+  const selectStyle = { ...inputStyle, cursor: "pointer" };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }} onClick={onCancel}>
+      <div style={{ background: "#0E0E1A", border: "1px solid #2A2A40", borderRadius: "18px", padding: "32px", maxWidth: "500px", width: "100%", position: "relative", maxHeight: "90vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+        <div style={{ fontSize: "10px", letterSpacing: "3px", color: "#A67EF5", textTransform: "uppercase", marginBottom: "20px", fontFamily: "monospace" }}>EDITAR CARD</div>
+
+        <div style={{ display: "grid", gap: "16px" }}>
+          <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+            <div style={{ flexShrink: 0 }}>
+              <label style={labelStyle}>Emoji</label>
+              <input value={form.emoji} onChange={e => set("emoji", e.target.value)} style={{ ...inputStyle, width: "52px", textAlign: "center", fontSize: "22px", padding: "6px" }} maxLength={4} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Título</label>
+              <input value={form.title} onChange={e => set("title", e.target.value)} style={inputStyle} maxLength={80} />
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            <div>
+              <label style={labelStyle}>Persona</label>
+              <select value={form.persona} onChange={e => set("persona", e.target.value)} style={selectStyle}>
+                {PERSONAS.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Tag</label>
+              <select value={form.tag} onChange={e => set("tag", e.target.value)} style={selectStyle}>
+                {TAGS_OPTS.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Fator Wow</label>
+            <input value={form.wow} onChange={e => set("wow", e.target.value)} style={inputStyle} maxLength={100} />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Descrição</label>
+            <textarea value={form.description} onChange={e => set("description", e.target.value)} style={{ ...inputStyle, minHeight: "120px", resize: "vertical", lineHeight: 1.6 }} maxLength={600} />
+          </div>
+
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button onClick={onCancel} style={{ flex: 1, background: "transparent", border: "1px solid #252535", borderRadius: "8px", padding: "11px", color: "#555", fontSize: "13px", cursor: "pointer", fontFamily: "system-ui" }}>Cancelar</button>
+            <button onClick={() => canSave && onSave(form)} style={{ flex: 2, background: canSave ? "#6C2BD9" : "#1A1A28", border: "none", borderRadius: "8px", padding: "11px", color: canSave ? "#fff" : "#333", fontSize: "13px", fontWeight: "700", cursor: canSave ? "pointer" : "not-allowed", fontFamily: "system-ui" }}>Salvar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── API helpers ──
 async function apiGet(path) {
   const res = await fetch(path);
@@ -559,14 +637,19 @@ export default function Roadmap() {
   const [customActiveFeature, setCustomActiveFeature] = useState(null);
   const [showArchived, setShowArchived] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [editingCard, setEditingCard] = useState(null); // { id, isCustom }
 
   // Load from database on mount
   useEffect(() => {
-    Promise.all([apiGet("/api/statuses"), apiGet("/api/custom-cards")])
-      .then(([statusMap, cards]) => {
+    Promise.all([apiGet("/api/statuses"), apiGet("/api/custom-cards"), apiGet("/api/edits")])
+      .then(([statusMap, cards, editsMap]) => {
         setPhases(initialPhases.map(phase => ({
           ...phase,
-          features: phase.features.map(f => ({ ...f, status: statusMap[f.id] || null })),
+          features: phase.features.map(f => ({
+            ...f,
+            status: statusMap[f.id] || null,
+            ...(editsMap[f.id] || {}),
+          })),
         })));
         setCustomCards(cards || []);
       })
@@ -603,6 +686,15 @@ export default function Roadmap() {
     });
   };
 
+  const undoCustomStatus = (id) => {
+    setCustomCards(prev => {
+      const updated = prev.map(c => c.id === id ? { ...c, status: null } : c);
+      const card = updated.find(c => c.id === id);
+      if (card) apiCall("/api/custom-cards", "POST", card);
+      return updated;
+    });
+  };
+
   const archiveCustomCard = (id) => updateCustomStatus(id, "archived");
 
   const unarchiveCustomCard = (id) => {
@@ -616,7 +708,7 @@ export default function Roadmap() {
 
   const addCard = (form) => {
     const phaseIndex = PHASES_OPTS.indexOf(form.phase);
-    const phaseColors = ["#FF4D00","#6C2BD9","#00875A","#C17900"];
+    const phaseColors = ["#FF4D00","#6C2BD9","#00875A","#C17900","#6B7280"];
     const newCard = {
       id: `custom-${Date.now()}`,
       title: form.title,
@@ -627,8 +719,9 @@ export default function Roadmap() {
       tag: form.tag,
       status: null,
       phaseLabel: form.phase,
-      phaseColor: phaseColors[phaseIndex] || "#6C2BD9",
+      phaseColor: phaseColors[phaseIndex] || "#6B7280",
       phaseIndex,
+      createdAt: Date.now(),
     };
     setCustomCards(prev => [...prev, newCard]);
     apiCall("/api/custom-cards", "POST", newCard);
@@ -638,6 +731,25 @@ export default function Roadmap() {
   const removeCustomCard = (id) => {
     setCustomCards(prev => prev.filter(c => c.id !== id));
     apiCall("/api/custom-cards", "DELETE", { id });
+  };
+
+  const editFeature = (featureId, changes) => {
+    setPhases(prev => prev.map(phase => ({
+      ...phase,
+      features: phase.features.map(f => f.id === featureId ? { ...f, ...changes } : f),
+    })));
+    apiCall("/api/edits", "PUT", { featureId, data: changes });
+    setEditingCard(null);
+  };
+
+  const editCustomCard = (id, changes) => {
+    setCustomCards(prev => {
+      const updated = prev.map(c => c.id === id ? { ...c, ...changes } : c);
+      const card = updated.find(c => c.id === id);
+      if (card) apiCall("/api/custom-cards", "POST", card);
+      return updated;
+    });
+    setEditingCard(null);
   };
 
   const allFeatures = phases.flatMap(p => p.features);
@@ -650,6 +762,8 @@ export default function Roadmap() {
   const rejected = [...visibleFeatures, ...visibleCustom].filter(f => f.status === "rejected").length;
   const pending = [...visibleFeatures, ...visibleCustom].filter(f => !f.status).length;
   const decidedFeatures = visibleFeatures.filter(f => f.status === "approved" || f.status === "rejected");
+
+  const isNewCard = (card) => card.createdAt && (Date.now() - card.createdAt < 7 * 24 * 60 * 60 * 1000);
 
   return (
     <div style={{ fontFamily: "'Georgia', serif", background: "#0A0A0F", minHeight: "100vh", color: "#F0EDE6" }}>
@@ -665,7 +779,7 @@ export default function Roadmap() {
         }} />
         <div style={{ position: "relative", zIndex: 1 }}>
           <div style={{ fontSize: "11px", letterSpacing: "4px", color: "#FF4D00", textTransform: "uppercase", marginBottom: "14px", fontFamily: "monospace" }}>
-            PRODUTO · ROADMAP 2025–2026
+            PRODUTO · ROADMAP 2026
           </div>
           <h1 style={{ fontSize: "clamp(40px, 6vw, 76px)", fontWeight: "900", margin: "0 0 10px", lineHeight: 1.0, letterSpacing: "-3px" }}>
             SeuChef<span style={{ color: "#FF4D00" }}>.</span>
@@ -719,9 +833,12 @@ export default function Roadmap() {
 
       {/* Phases */}
       <div style={{ padding: "56px 24px", maxWidth: "1200px", margin: "0 auto" }}>
-        {phases.map((phase) => {
-          const phaseApproved = phase.features.filter(f => f.status === "approved").length;
-          const phaseProgress = (phaseApproved / phase.features.length) * 100;
+        {phases.map((phase, phaseIdx) => {
+          const phaseCustomCards = visibleCustom.filter(c => c.phaseIndex === phaseIdx);
+          const totalPhaseCards = phase.features.filter(f => f.status !== "archived").length + phaseCustomCards.length;
+          const phaseApproved = phase.features.filter(f => f.status === "approved").length + phaseCustomCards.filter(c => c.status === "approved").length;
+          const totalForProgress = phase.features.length + phaseCustomCards.length;
+          const phaseProgress = totalForProgress > 0 ? (phaseApproved / totalForProgress) * 100 : 0;
           return (
             <div key={phase.id} style={{ marginBottom: "72px" }}>
               {/* Phase title */}
@@ -735,8 +852,7 @@ export default function Roadmap() {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
                     <span style={{ fontSize: "10px", color: phase.color, fontFamily: "monospace", letterSpacing: "3px", textTransform: "uppercase" }}>{phase.name}</span>
-                    <span style={{ fontSize: "10px", color: "#3A3A48", fontFamily: "monospace", padding: "2px 7px", border: "1px solid #252530", borderRadius: "4px" }}>{phase.timeline}</span>
-                    <span style={{ fontSize: "10px", color: "#3A3A48", fontFamily: "monospace" }}>{phaseApproved}/{phase.features.length} aprovadas</span>
+                    <span style={{ fontSize: "10px", color: "#3A3A48", fontFamily: "monospace" }}>{phaseApproved}/{totalForProgress} aprovadas</span>
                   </div>
                   <h2 style={{ fontSize: "24px", fontWeight: "900", margin: 0, letterSpacing: "-0.5px" }}>{phase.subtitle}</h2>
                 </div>
@@ -748,6 +864,7 @@ export default function Roadmap() {
               {/* Cards */}
               <div style={{ paddingLeft: "12px", borderLeft: `2px solid ${phase.color}25` }}>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(310px, 1fr))", gap: "14px" }}>
+                  {/* Phase features */}
                   {phase.features.filter(f => f.status !== "archived").map((feat) => {
                     const isOpen = activeFeature === feat.id;
                     const pc = personaColors[feat.persona];
@@ -788,15 +905,74 @@ export default function Roadmap() {
                           status={feat.status}
                           onApprove={() => updateStatus(feat.id, "approved")}
                           onReject={() => updateStatus(feat.id, "rejected")}
+                          onUndo={() => clearFeatureStatus(feat.id)}
                         />
-                        <button onClick={() => archiveFeature(feat.id)} style={{
-                          marginTop: "8px", width: "100%", background: "transparent", border: "1px solid #1C1C26",
-                          borderRadius: "6px", color: "#3A3A48", fontSize: "11px", cursor: "pointer",
-                          fontFamily: "monospace", padding: "6px", textAlign: "center", transition: "all 0.15s",
-                        }}
-                          onMouseOver={e => { e.currentTarget.style.borderColor = "#555"; e.currentTarget.style.color = "#777"; }}
-                          onMouseOut={e => { e.currentTarget.style.borderColor = "#1C1C26"; e.currentTarget.style.color = "#3A3A48"; }}
-                        >Arquivar</button>
+                        <div style={{ display: "flex", gap: "6px", marginTop: "8px" }}>
+                          <button onClick={() => setEditingCard({ ...feat, isCustom: false })} style={{
+                            flex: 1, background: "transparent", border: "1px solid #1C1C26",
+                            borderRadius: "6px", color: "#3A3A48", fontSize: "11px", cursor: "pointer",
+                            fontFamily: "monospace", padding: "6px", textAlign: "center",
+                          }}>Editar</button>
+                          <button onClick={() => archiveFeature(feat.id)} style={{
+                            flex: 1, background: "transparent", border: "1px solid #1C1C26",
+                            borderRadius: "6px", color: "#3A3A48", fontSize: "11px", cursor: "pointer",
+                            fontFamily: "monospace", padding: "6px", textAlign: "center",
+                          }}>Arquivar</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Custom cards for this phase */}
+                  {phaseCustomCards.map((feat) => {
+                    const isOpen = customActiveFeature === feat.id;
+                    const pc = personaColors[feat.persona] || personaColors["Ambos"];
+                    const tc = tagColors[feat.tag] || "#6C2BD9";
+                    const isApproved = feat.status === "approved";
+                    const isRejected = feat.status === "rejected";
+                    const isNew = isNewCard(feat);
+                    return (
+                      <div key={feat.id} style={{ background: isApproved ? "#0A110D" : isRejected ? "#0D0A0A" : "#111118", border: `1px solid ${isApproved ? "rgba(78,203,160,0.3)" : isRejected ? "rgba(220,38,38,0.15)" : isOpen ? phase.color + "45" : "#1C1C26"}`, borderRadius: "14px", padding: "20px", opacity: isRejected ? 0.5 : 1, transition: "all 0.2s ease", position: "relative", overflow: "hidden" }}>
+                        {isApproved && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "linear-gradient(90deg, transparent, #4ECBA0, transparent)" }} />}
+                        {/* NEW badge */}
+                        {isNew && (
+                          <div style={{ position: "absolute", top: "12px", right: "12px", fontSize: "9px", padding: "2px 6px", borderRadius: "4px", background: "rgba(16,185,129,0.2)", color: "#10B981", fontFamily: "monospace", border: "1px solid rgba(16,185,129,0.3)" }}>NEW</div>
+                        )}
+
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
+                          <div onClick={() => setCustomActiveFeature(isOpen ? null : feat.id)} style={{ fontSize: "28px", cursor: "pointer" }}>{feat.emoji}</div>
+                          <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", justifyContent: "flex-end", paddingTop: isNew ? "20px" : "0px" }}>
+                            <span style={{ fontSize: "9px", padding: "2px 7px", borderRadius: "100px", background: pc.bg, color: pc.text, border: `1px solid ${pc.border}`, fontFamily: "monospace" }}>{feat.persona}</span>
+                            <span style={{ fontSize: "9px", padding: "2px 7px", borderRadius: "100px", background: tc + "15", color: tc, border: `1px solid ${tc}28`, fontFamily: "monospace" }}>{feat.tag}</span>
+                          </div>
+                        </div>
+
+                        <h3 onClick={() => setCustomActiveFeature(isOpen ? null : feat.id)} style={{ fontSize: "14px", fontWeight: "700", margin: "0 0 8px", lineHeight: 1.35, color: isRejected ? "#555" : "#EEEAE2", cursor: "pointer" }}>{feat.title}</h3>
+
+                        <div style={{ fontSize: "11px", color: isRejected ? "#444" : phase.accent, fontFamily: "monospace", padding: "5px 9px", background: phase.color + "0C", borderRadius: "5px", borderLeft: `2px solid ${isRejected ? "#252525" : phase.color}`, marginBottom: "10px" }}>✦ {feat.wow}</div>
+
+                        {isOpen && <p style={{ fontSize: "13px", color: "#7070A0", lineHeight: 1.75, margin: "0 0 4px", fontFamily: "system-ui" }}>{feat.description}</p>}
+                        {!isOpen && <div onClick={() => setCustomActiveFeature(feat.id)} style={{ fontSize: "10px", color: "#2E2E3A", fontFamily: "monospace", cursor: "pointer", textAlign: "right" }}>ver detalhes →</div>}
+
+                        <ApprovalButtons status={feat.status} onApprove={() => updateCustomStatus(feat.id, "approved")} onReject={() => updateCustomStatus(feat.id, "rejected")} onUndo={() => undoCustomStatus(feat.id)} />
+
+                        <div style={{ display: "flex", gap: "6px", marginTop: "8px" }}>
+                          <button onClick={() => setEditingCard({ ...feat, isCustom: true })} style={{
+                            flex: 1, background: "transparent", border: "1px solid #1C1C26",
+                            borderRadius: "6px", color: "#3A3A48", fontSize: "11px", cursor: "pointer",
+                            fontFamily: "monospace", padding: "6px", textAlign: "center",
+                          }}>Editar</button>
+                          <button onClick={() => archiveCustomCard(feat.id)} style={{
+                            flex: 1, background: "transparent", border: "1px solid #1C1C26",
+                            borderRadius: "6px", color: "#3A3A48", fontSize: "11px", cursor: "pointer",
+                            fontFamily: "monospace", padding: "6px", textAlign: "center",
+                          }}>Arquivar</button>
+                          <button onClick={() => removeCustomCard(feat.id)} style={{
+                            flex: 1, background: "transparent", border: "1px solid #1C1C26",
+                            borderRadius: "6px", color: "#2A2A3A", fontSize: "11px", cursor: "pointer",
+                            fontFamily: "monospace", padding: "6px", textAlign: "center",
+                          }}>Remover</button>
+                        </div>
                       </div>
                     );
                   })}
@@ -827,102 +1003,27 @@ export default function Roadmap() {
           </div>
         )}
 
-        {/* ── CUSTOM CARDS SECTION ── */}
-        <div style={{ marginBottom: "72px" }}>
-          {/* Section header */}
-          <div style={{ display: "flex", alignItems: "center", gap: "18px", marginBottom: "20px" }}>
-            <div style={{ width: "56px", height: "56px", borderRadius: "14px", flexShrink: 0, background: "linear-gradient(135deg, #6C2BD9, #A67EF5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px", boxShadow: "0 6px 28px #6C2BD935" }}>✏️</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
-                <span style={{ fontSize: "10px", color: "#A67EF5", fontFamily: "monospace", letterSpacing: "3px", textTransform: "uppercase" }}>SUAS IDEIAS</span>
-                {customCards.length > 0 && <span style={{ fontSize: "10px", color: "#3A3A48", fontFamily: "monospace", padding: "2px 7px", border: "1px solid #252530", borderRadius: "4px" }}>{customCards.length} ideia{customCards.length > 1 ? "s" : ""}</span>}
+        {/* ── ADD NEW IDEA BUTTON / FORM ── */}
+        <div style={{ marginBottom: "48px" }}>
+          {!showForm ? (
+            <button onClick={() => setShowForm(true)} style={{
+              width: "100%", background: "transparent",
+              border: "2px dashed #252535", borderRadius: "14px", padding: "28px",
+              cursor: "pointer", transition: "all 0.2s",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: "10px",
+            }}
+              onMouseOver={e => { e.currentTarget.style.borderColor = "#6C2BD9"; e.currentTarget.style.background = "#6C2BD908"; }}
+              onMouseOut={e => { e.currentTarget.style.borderColor = "#252535"; e.currentTarget.style.background = "transparent"; }}
+            >
+              <div style={{ width: "44px", height: "44px", borderRadius: "50%", background: "#6C2BD918", border: "1px solid #6C2BD940", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>+</div>
+              <div>
+                <div style={{ color: "#A67EF5", fontSize: "14px", fontWeight: "700", fontFamily: "system-ui", marginBottom: "4px" }}>Adicionar nova ideia ao roadmap</div>
+                <div style={{ color: "#3A3A4A", fontSize: "12px", fontFamily: "monospace" }}>Preencha título, categoria, persona e descrição</div>
               </div>
-              <h2 style={{ fontSize: "24px", fontWeight: "900", margin: 0, letterSpacing: "-0.5px" }}>Cadastrar Nova Ideia</h2>
-            </div>
-          </div>
-
-          {/* Progress bar */}
-          {customCards.length > 0 && (
-            <div style={{ height: "2px", background: "#151520", borderRadius: "100px", marginBottom: "24px", overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${(customCards.filter(c => c.status === "approved").length / customCards.length) * 100}%`, background: "linear-gradient(90deg, #6C2BD9, #A67EF5)", borderRadius: "100px", transition: "width 0.4s ease" }} />
-            </div>
+            </button>
+          ) : (
+            <NewCardForm onAdd={addCard} onCancel={() => setShowForm(false)} />
           )}
-
-          <div style={{ paddingLeft: "12px", borderLeft: "2px solid #6C2BD925" }}>
-            {/* Existing custom cards */}
-            {visibleCustom.length > 0 && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(310px, 1fr))", gap: "14px", marginBottom: "20px" }}>
-                {visibleCustom.map((feat) => {
-                  const isOpen = customActiveFeature === feat.id;
-                  const pc = personaColors[feat.persona] || personaColors["Ambos"];
-                  const tc = tagColors[feat.tag] || "#6C2BD9";
-                  const isApproved = feat.status === "approved";
-                  const isRejected = feat.status === "rejected";
-                  return (
-                    <div key={feat.id} style={{ background: isApproved ? "#0A110D" : isRejected ? "#0D0A0A" : "#111118", border: `1px solid ${isApproved ? "rgba(78,203,160,0.3)" : isRejected ? "rgba(220,38,38,0.15)" : isOpen ? "#6C2BD945" : "#1C1C26"}`, borderRadius: "14px", padding: "20px", opacity: isRejected ? 0.5 : 1, transition: "all 0.2s ease", position: "relative", overflow: "hidden" }}>
-                      {isApproved && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "2px", background: "linear-gradient(90deg, transparent, #4ECBA0, transparent)" }} />}
-                      {/* Custom badge */}
-                      <div style={{ position: "absolute", top: "12px", right: "12px", fontSize: "9px", padding: "2px 6px", borderRadius: "4px", background: "#6C2BD920", color: "#A67EF5", fontFamily: "monospace", border: "1px solid #6C2BD930" }}>CUSTOM</div>
-
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
-                        <div onClick={() => setCustomActiveFeature(isOpen ? null : feat.id)} style={{ fontSize: "28px", cursor: "pointer" }}>{feat.emoji}</div>
-                        <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", justifyContent: "flex-end", paddingTop: "20px" }}>
-                          <span style={{ fontSize: "9px", padding: "2px 7px", borderRadius: "100px", background: pc.bg, color: pc.text, border: `1px solid ${pc.border}`, fontFamily: "monospace" }}>{feat.persona}</span>
-                          <span style={{ fontSize: "9px", padding: "2px 7px", borderRadius: "100px", background: tc + "15", color: tc, border: `1px solid ${tc}28`, fontFamily: "monospace" }}>{feat.tag}</span>
-                        </div>
-                      </div>
-
-                      <h3 onClick={() => setCustomActiveFeature(isOpen ? null : feat.id)} style={{ fontSize: "14px", fontWeight: "700", margin: "0 0 8px", lineHeight: 1.35, color: isRejected ? "#555" : "#EEEAE2", cursor: "pointer" }}>{feat.title}</h3>
-
-                      <div style={{ fontSize: "11px", color: isRejected ? "#444" : "#A67EF5", fontFamily: "monospace", padding: "5px 9px", background: "#6C2BD90C", borderRadius: "5px", borderLeft: `2px solid ${isRejected ? "#252525" : "#6C2BD9"}`, marginBottom: "10px" }}>✦ {feat.wow}</div>
-
-                      {/* Phase tag */}
-                      <div style={{ fontSize: "10px", color: feat.phaseColor, fontFamily: "monospace", marginBottom: "8px" }}>{feat.phaseLabel}</div>
-
-                      {isOpen && <p style={{ fontSize: "13px", color: "#7070A0", lineHeight: 1.75, margin: "0 0 4px", fontFamily: "system-ui" }}>{feat.description}</p>}
-                      {!isOpen && <div onClick={() => setCustomActiveFeature(feat.id)} style={{ fontSize: "10px", color: "#2E2E3A", fontFamily: "monospace", cursor: "pointer", textAlign: "right" }}>ver detalhes →</div>}
-
-                      <ApprovalButtons status={feat.status} onApprove={() => updateCustomStatus(feat.id, "approved")} onReject={() => updateCustomStatus(feat.id, "rejected")} />
-
-                      <div style={{ display: "flex", gap: "6px", marginTop: "8px" }}>
-                        <button onClick={() => archiveCustomCard(feat.id)} style={{
-                          flex: 1, background: "transparent", border: "1px solid #1C1C26",
-                          borderRadius: "6px", color: "#3A3A48", fontSize: "11px", cursor: "pointer",
-                          fontFamily: "monospace", padding: "6px", textAlign: "center",
-                        }}>Arquivar</button>
-                        <button onClick={() => removeCustomCard(feat.id)} style={{
-                          flex: 1, background: "transparent", border: "1px solid #1C1C26",
-                          borderRadius: "6px", color: "#2A2A3A", fontSize: "11px", cursor: "pointer",
-                          fontFamily: "monospace", padding: "6px", textAlign: "center",
-                        }}>Remover</button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Add button or Form */}
-            {!showForm ? (
-              <button onClick={() => setShowForm(true)} style={{
-                width: "100%", background: "transparent",
-                border: "2px dashed #252535", borderRadius: "14px", padding: "28px",
-                cursor: "pointer", transition: "all 0.2s",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: "10px",
-              }}
-                onMouseOver={e => { e.currentTarget.style.borderColor = "#6C2BD9"; e.currentTarget.style.background = "#6C2BD908"; }}
-                onMouseOut={e => { e.currentTarget.style.borderColor = "#252535"; e.currentTarget.style.background = "transparent"; }}
-              >
-                <div style={{ width: "44px", height: "44px", borderRadius: "50%", background: "#6C2BD918", border: "1px solid #6C2BD940", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>+</div>
-                <div>
-                  <div style={{ color: "#A67EF5", fontSize: "14px", fontWeight: "700", fontFamily: "system-ui", marginBottom: "4px" }}>Adicionar nova ideia ao roadmap</div>
-                  <div style={{ color: "#3A3A4A", fontSize: "12px", fontFamily: "monospace" }}>Preencha título, fase, persona e descrição</div>
-                </div>
-              </button>
-            ) : (
-              <NewCardForm onAdd={addCard} onCancel={() => setShowForm(false)} />
-            )}
-          </div>
         </div>
 
 
@@ -973,8 +1074,23 @@ export default function Roadmap() {
       </div>
 
       <div style={{ textAlign: "center", padding: "28px", borderTop: "1px solid #141420", color: "#252535", fontSize: "10px", fontFamily: "monospace" }}>
-        SeuChef Roadmap · {allFeatures.length + customCards.length} funções · 4 fases · 18 meses
+        SeuChef Roadmap · {allFeatures.length + customCards.length} funções · 5 categorias
       </div>
+
+      {/* Edit modal */}
+      {editingCard && (
+        <EditCardModal
+          card={editingCard}
+          onCancel={() => setEditingCard(null)}
+          onSave={(changes) => {
+            if (editingCard.isCustom) {
+              editCustomCard(editingCard.id, changes);
+            } else {
+              editFeature(editingCard.id, changes);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
