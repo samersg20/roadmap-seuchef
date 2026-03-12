@@ -537,111 +537,81 @@ function NewCardForm({ onAdd, onCancel }) {
   );
 }
 
-// ── Encode/decode state to/from URL hash ──
-function encodeState(statusMap, customCards) {
-  const data = { s: statusMap, c: customCards };
-  return btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+// ── API helpers ──
+async function apiGet(path) {
+  const res = await fetch(path);
+  return res.json();
 }
 
-function decodeState(hash) {
-  try {
-    const json = decodeURIComponent(escape(atob(hash)));
-    return JSON.parse(json);
-  } catch { return null; }
-}
-
-function loadInitialState() {
-  // 1. Try URL hash first (shared link)
-  const hash = window.location.hash.slice(1);
-  if (hash) {
-    const decoded = decodeState(hash);
-    if (decoded) {
-      const phases = initialPhases.map(phase => ({
-        ...phase,
-        features: phase.features.map(f => ({ ...f, status: decoded.s[f.id] || null })),
-      }));
-      return { phases, custom: decoded.c || [] };
-    }
-  }
-  // 2. Fallback to localStorage
-  try {
-    const savedStatuses = localStorage.getItem("seuchef-statuses");
-    const savedCustom = localStorage.getItem("seuchef-custom");
-    const map = savedStatuses ? JSON.parse(savedStatuses) : {};
-    const phases = initialPhases.map(phase => ({
-      ...phase,
-      features: phase.features.map(f => ({ ...f, status: map[f.id] || null })),
-    }));
-    return { phases, custom: savedCustom ? JSON.parse(savedCustom) : [] };
-  } catch {
-    return { phases: initialPhases, custom: [] };
-  }
+async function apiCall(path, method, body) {
+  fetch(path, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
 
 export default function Roadmap() {
-  const [initial] = useState(loadInitialState);
-  const [phases, setPhases] = useState(initial.phases);
+  const [phases, setPhases] = useState(initialPhases);
   const [activeFeature, setActiveFeature] = useState(null);
-  const [customCards, setCustomCards] = useState(initial.custom);
+  const [customCards, setCustomCards] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [customActiveFeature, setCustomActiveFeature] = useState(null);
   const [showArchived, setShowArchived] = useState(false);
-  const [linkCopied, setLinkCopied] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Persist to localStorage
+  // Load from database on mount
   useEffect(() => {
-    const map = {};
-    phases.forEach(p => p.features.forEach(f => { if (f.status) map[f.id] = f.status; }));
-    localStorage.setItem("seuchef-statuses", JSON.stringify(map));
-  }, [phases]);
+    Promise.all([apiGet("/api/statuses"), apiGet("/api/custom-cards")])
+      .then(([statusMap, cards]) => {
+        setPhases(initialPhases.map(phase => ({
+          ...phase,
+          features: phase.features.map(f => ({ ...f, status: statusMap[f.id] || null })),
+        })));
+        setCustomCards(cards || []);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
-  useEffect(() => {
-    localStorage.setItem("seuchef-custom", JSON.stringify(customCards));
-  }, [customCards]);
-
-  const updateStatus = (featureId, status) => {
+  const setFeatureStatus = (featureId, status) => {
     setPhases(prev => prev.map(phase => ({
       ...phase,
       features: phase.features.map(f => f.id === featureId ? { ...f, status } : f),
     })));
+    apiCall("/api/statuses", "PUT", { featureId, status });
   };
 
-  const archiveFeature = (featureId) => {
-    setPhases(prev => prev.map(phase => ({
-      ...phase,
-      features: phase.features.map(f => f.id === featureId ? { ...f, status: "archived" } : f),
-    })));
-  };
-
-  const unarchiveFeature = (featureId) => {
+  const clearFeatureStatus = (featureId) => {
     setPhases(prev => prev.map(phase => ({
       ...phase,
       features: phase.features.map(f => f.id === featureId ? { ...f, status: null } : f),
     })));
+    apiCall("/api/statuses", "DELETE", { featureId });
   };
+
+  const updateStatus = (featureId, status) => setFeatureStatus(featureId, status);
+  const archiveFeature = (featureId) => setFeatureStatus(featureId, "archived");
+  const unarchiveFeature = (featureId) => clearFeatureStatus(featureId);
 
   const updateCustomStatus = (id, status) => {
-    setCustomCards(prev => prev.map(c => c.id === id ? { ...c, status } : c));
+    setCustomCards(prev => {
+      const updated = prev.map(c => c.id === id ? { ...c, status } : c);
+      const card = updated.find(c => c.id === id);
+      if (card) apiCall("/api/custom-cards", "POST", card);
+      return updated;
+    });
   };
 
-  const archiveCustomCard = (id) => {
-    setCustomCards(prev => prev.map(c => c.id === id ? { ...c, status: "archived" } : c));
-  };
+  const archiveCustomCard = (id) => updateCustomStatus(id, "archived");
 
   const unarchiveCustomCard = (id) => {
-    setCustomCards(prev => prev.map(c => c.id === id ? { ...c, status: null } : c));
-  };
-
-  const generateShareLink = () => {
-    const map = {};
-    phases.forEach(p => p.features.forEach(f => { if (f.status) map[f.id] = f.status; }));
-    const hash = encodeState(map, customCards);
-    const url = window.location.origin + window.location.pathname + "#" + hash;
-    navigator.clipboard.writeText(url).then(() => {
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 3000);
+    setCustomCards(prev => {
+      const updated = prev.map(c => c.id === id ? { ...c, status: null } : c);
+      const card = updated.find(c => c.id === id);
+      if (card) apiCall("/api/custom-cards", "POST", card);
+      return updated;
     });
-    window.location.hash = hash;
   };
 
   const addCard = (form) => {
@@ -661,11 +631,13 @@ export default function Roadmap() {
       phaseIndex,
     };
     setCustomCards(prev => [...prev, newCard]);
+    apiCall("/api/custom-cards", "POST", newCard);
     setShowForm(false);
   };
 
   const removeCustomCard = (id) => {
     setCustomCards(prev => prev.filter(c => c.id !== id));
+    apiCall("/api/custom-cards", "DELETE", { id });
   };
 
   const allFeatures = phases.flatMap(p => p.features);
@@ -718,20 +690,16 @@ export default function Roadmap() {
               </button>
             )}
           </div>
-          {/* Save & Share */}
-          <div style={{ marginTop: "20px" }}>
-            <button onClick={generateShareLink} style={{
-              padding: "12px 28px", borderRadius: "100px", border: "1px solid #FF4D0050",
-              background: linkCopied ? "rgba(0,135,90,0.2)" : "rgba(255,77,0,0.12)",
-              color: linkCopied ? "#4ECBA0" : "#FF8C5A", fontSize: "13px", fontWeight: "700",
-              cursor: "pointer", fontFamily: "system-ui", transition: "all 0.2s",
-            }}>
-              {linkCopied ? "Link copiado!" : "Salvar & Copiar Link"}
-            </button>
-            <div style={{ fontSize: "10px", color: "#3A3A48", fontFamily: "monospace", marginTop: "8px" }}>
-              O link salva todas as decisões — abra em qualquer dispositivo
+          {loading && (
+            <div style={{ marginTop: "20px", fontSize: "12px", color: "#555", fontFamily: "monospace" }}>
+              Carregando decisões...
             </div>
-          </div>
+          )}
+          {!loading && (
+            <div style={{ marginTop: "16px", fontSize: "10px", color: "#3A3A48", fontFamily: "monospace" }}>
+              Decisões salvas automaticamente no banco de dados
+            </div>
+          )}
         </div>
       </div>
 
